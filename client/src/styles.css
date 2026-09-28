@@ -11,9 +11,15 @@ const iconMap = {
 
 function formatNumber(value) {
   if (typeof value === 'number') {
-    return value % 1 === 0 ? value.toLocaleString() : value.toFixed(1);
+    return Number.isInteger(value) ? value.toLocaleString() : value.toFixed(1);
   }
+
   return value;
+}
+
+function formatDelta(delta, direction) {
+  if (direction === 'neutral') return '—';
+  return `${direction === 'up' ? '↑' : '↓'} ${Math.abs(delta).toFixed(1)}%`;
 }
 
 export default function App() {
@@ -23,8 +29,8 @@ export default function App() {
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch('/api/metrics');
-        const payload = await response.json();
+        const res = await fetch('/api/metrics');
+        const payload = await res.json();
         setData(payload);
       } catch (error) {
         console.error('Failed to load dashboard data', error);
@@ -64,7 +70,9 @@ export default function App() {
             { label: 'Settings' },
           ].map((item) => (
             <button key={item.label} className={`nav-item ${item.active ? 'active' : ''}`}>
-              <span className="nav-icon">{item.label === 'Overview' ? '⌂' : item.label === 'Trends' ? '↗' : item.label === 'Reports' ? '▣' : '⚙'}</span>
+              <span className="nav-icon">
+                {item.label === 'Overview' ? '⌂' : item.label === 'Trends' ? '↗' : item.label === 'Reports' ? '▣' : '⚙'}
+              </span>
               {item.label}
             </button>
           ))}
@@ -90,7 +98,7 @@ export default function App() {
               <span>Last Updated</span>
               <strong>Sep 11, 2026</strong>
             </div>
-            <div className="user-avatar">◉</div>
+            <div className="user-avatar">○</div>
           </div>
         </header>
 
@@ -109,8 +117,7 @@ export default function App() {
                 </div>
                 <div className="kpi-value">{formatNumber(metric.value)}</div>
                 <div className={`trend ${metric.deltaDirection}`}>
-                  {metric.deltaDirection === 'up' ? '↑' : metric.deltaDirection === 'down' ? '↓' : '—'}
-                  {metric.deltaDirection === 'neutral' ? '' : `${Math.abs(metric.delta).toFixed(1)}%`}
+                  {formatDelta(metric.delta, metric.deltaDirection)}
                   <span>{metric.comparison}</span>
                 </div>
               </div>
@@ -139,7 +146,7 @@ export default function App() {
                 <div className="kpi-value large">{metric.value}</div>
                 {metric.deltaDirection !== 'neutral' && (
                   <div className={`trend ${metric.deltaDirection}`}>
-                    {metric.deltaDirection === 'up' ? '↑' : '↓'} {Math.abs(metric.delta).toFixed(1)}%
+                    {formatDelta(metric.delta, metric.deltaDirection)}
                     <span>{metric.comparison}</span>
                   </div>
                 )}
@@ -163,8 +170,7 @@ export default function App() {
                 </div>
                 <div className="kpi-value">{formatNumber(metric.value)}</div>
                 <div className={`trend ${metric.deltaDirection}`}>
-                  {metric.deltaDirection === 'up' ? '↑' : metric.deltaDirection === 'down' ? '↓' : '—'}
-                  {metric.deltaDirection === 'neutral' ? '' : `${Math.abs(metric.delta).toFixed(1)}%`}
+                  {formatDelta(metric.delta, metric.deltaDirection)}
                   <span>{metric.comparison}</span>
                 </div>
               </div>
@@ -186,17 +192,19 @@ export default function App() {
               <div key={series.key} className="trend-card">
                 <div className="trend-select">{series.label}</div>
                 <div className="mini-chart" aria-label={series.label}>
-                  {series.data.map((point, index) => (
-                    <span
-                      key={`${series.key}-${index}`}
-                      className="bar"
-                      style={{
-                        height: `${Math.max((point / Math.max(...series.data)) * 100, 16)}%`,
-                        background: series.color,
-                        opacity: 0.9,
-                      }}
-                    />
-                  ))}
+                  {series.data.map((point, index) => {
+                    const max = Math.max(...series.data);
+                    return (
+                      <span
+                        key={`${series.key}-${index}`}
+                        className="bar"
+                        style={{
+                          height: `${Math.max((point / max) * 100, 18)}%`,
+                          background: series.color,
+                        }}
+                      />
+                    );
+                  })}
                 </div>
                 <div className="chart-legend">
                   <span className="legend-dot" style={{ background: series.color }} />
