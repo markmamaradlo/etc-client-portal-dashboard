@@ -1,0 +1,212 @@
+import { useEffect, useMemo, useState } from 'react';
+
+const iconMap = {
+  clock: '◔',
+  percent: '%',
+  folder: '▣',
+  check: '✓',
+  users: '◌',
+  ot: '✦',
+};
+
+function formatNumber(value) {
+  if (typeof value === 'number') {
+    return value % 1 === 0 ? value.toLocaleString() : value.toFixed(1);
+  }
+  return value;
+}
+
+export default function App() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const response = await fetch('/api/metrics');
+        const payload = await response.json();
+        setData(payload);
+      } catch (error) {
+        console.error('Failed to load dashboard data', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
+  const overviewMetrics = useMemo(() => data?.overview ?? [], [data]);
+  const attendanceMetrics = useMemo(() => data?.attendance?.metrics ?? [], [data]);
+  const dailyMetrics = useMemo(() => data?.daily?.metrics ?? [], [data]);
+  const trendSeries = useMemo(() => data?.trends?.series ?? [], [data]);
+
+  if (loading) {
+    return <div className="loader">Loading dashboard…</div>;
+  }
+
+  return (
+    <div className="app-shell">
+      <aside className="sidebar">
+        <div className="brand-wrap">
+          <div className="brand-mark">ETC</div>
+          <div className="brand-copy">
+            <div>Client Portal</div>
+            <div>Campaign Dashboard</div>
+          </div>
+        </div>
+
+        <nav className="nav">
+          {[
+            { label: 'Overview', active: true },
+            { label: 'Trends' },
+            { label: 'Reports' },
+            { label: 'Settings' },
+          ].map((item) => (
+            <button key={item.label} className={`nav-item ${item.active ? 'active' : ''}`}>
+              <span className="nav-icon">{item.label === 'Overview' ? '⌂' : item.label === 'Trends' ? '↗' : item.label === 'Reports' ? '▣' : '⚙'}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="content">
+        <header className="topbar">
+          <div className="topbar-filter">
+            <div className="filter-group">
+              <span className="filter-label">Client</span>
+              <div className="filter-value">Redial</div>
+            </div>
+            <div className="filter-group">
+              <span className="filter-label">Campaign type</span>
+              <div className="filter-value">Insurance Verification</div>
+            </div>
+          </div>
+
+          <div className="topbar-meta">
+            <div className="date-chip">
+              <span className="mini-icon">🗓</span>
+              <span>Last Updated</span>
+              <strong>Sep 11, 2026</strong>
+            </div>
+            <div className="user-avatar">◉</div>
+          </div>
+        </header>
+
+        <section className="section-block">
+          <div className="section-heading-row">
+            <h2>Month-to-Date Running Numbers</h2>
+          </div>
+          <div className="section-subtitle">Key operational metrics for the current month (MTD)</div>
+
+          <div className="kpi-grid metric-grid-5">
+            {overviewMetrics.map((metric) => (
+              <div key={metric.key} className="kpi-card">
+                <div className="kpi-header">
+                  <div className={`kpi-icon ${metric.accent}`}>{iconMap[metric.icon] || '◔'}</div>
+                  <div className="kpi-label">{metric.label}</div>
+                </div>
+                <div className="kpi-value">{formatNumber(metric.value)}</div>
+                <div className={`trend ${metric.deltaDirection}`}>
+                  {metric.deltaDirection === 'up' ? '↑' : metric.deltaDirection === 'down' ? '↓' : '—'}
+                  {metric.deltaDirection === 'neutral' ? '' : `${Math.abs(metric.delta).toFixed(1)}%`}
+                  <span>{metric.comparison}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="section-block attendance-box">
+          <div className="section-heading-row slim">
+            <div className="title-wrap">
+              <div className="kpi-icon cyan small">◔</div>
+              <h3>Attendance Tracker</h3>
+            </div>
+            <div className="date-picker">Sep 11, 2026</div>
+          </div>
+
+          <div className="attendance-summary">{data?.attendance?.summary}</div>
+
+          <div className="kpi-grid metric-grid-3">
+            {attendanceMetrics.map((metric) => (
+              <div key={metric.label} className="kpi-card compact">
+                <div className="kpi-header">
+                  <div className={`kpi-icon ${metric.accent}`}>{iconMap[metric.icon] || '◔'}</div>
+                  <div className="kpi-label">{metric.label}</div>
+                </div>
+                <div className="kpi-value large">{metric.value}</div>
+                {metric.deltaDirection !== 'neutral' && (
+                  <div className={`trend ${metric.deltaDirection}`}>
+                    {metric.deltaDirection === 'up' ? '↑' : '↓'} {Math.abs(metric.delta).toFixed(1)}%
+                    <span>{metric.comparison}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="section-block">
+          <div className="section-heading-row">
+            <h2>Running numbers for the day</h2>
+          </div>
+          <div className="section-subtitle">Key operational metrics for the selected day (Sep 11, 2025)</div>
+
+          <div className="kpi-grid metric-grid-5">
+            {dailyMetrics.map((metric) => (
+              <div key={metric.key} className="kpi-card">
+                <div className="kpi-header">
+                  <div className={`kpi-icon ${metric.accent}`}>{iconMap[metric.icon] || '◔'}</div>
+                  <div className="kpi-label">{metric.label}</div>
+                </div>
+                <div className="kpi-value">{formatNumber(metric.value)}</div>
+                <div className={`trend ${metric.deltaDirection}`}>
+                  {metric.deltaDirection === 'up' ? '↑' : metric.deltaDirection === 'down' ? '↓' : '—'}
+                  {metric.deltaDirection === 'neutral' ? '' : `${Math.abs(metric.delta).toFixed(1)}%`}
+                  <span>{metric.comparison}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="section-block trends-box">
+          <div className="section-heading-row slim">
+            <div>
+              <h3>Performance Trends</h3>
+              <div className="section-subtitle inline">View historical performance for key metrics</div>
+            </div>
+            <div className="date-picker">Aug 1, 2026 – Sep 11, 2026</div>
+          </div>
+
+          <div className="trend-grid">
+            {trendSeries.map((series) => (
+              <div key={series.key} className="trend-card">
+                <div className="trend-select">{series.label}</div>
+                <div className="mini-chart" aria-label={series.label}>
+                  {series.data.map((point, index) => (
+                    <span
+                      key={`${series.key}-${index}`}
+                      className="bar"
+                      style={{
+                        height: `${Math.max((point / Math.max(...series.data)) * 100, 16)}%`,
+                        background: series.color,
+                        opacity: 0.9,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="chart-legend">
+                  <span className="legend-dot" style={{ background: series.color }} />
+                  {series.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+}
